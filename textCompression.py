@@ -1,5 +1,6 @@
 #(varaiable length codes) 
 import heapq
+import os
 class BinaryTreeNode:
     def __init__(self, value, freq):
         self.value = value
@@ -21,6 +22,7 @@ class HuffmanCoding:
         self.path = path
         self.__heap = []
         self.__codes = {}
+        self._reverseCodes ={}
 
 
     def __make_frequency_dict(self, text):
@@ -37,7 +39,7 @@ class HuffmanCoding:
         for key in freq_dict:
             frequency = freq_dict[key]
             binary_tree_node = BinaryTreeNode(key, frequency)
-            heapq.push(self.__heap, binary_tree_node)
+            heapq.heappush(self.__heap, binary_tree_node)
 
     def __buildTree(self):
         while(len(self.__heap) > 1):
@@ -60,12 +62,14 @@ class HuffmanCoding:
 
         if root.value is not None:
             self.__codes[root.value] = curr_bits
+            self.__reverseCodes[curr_bits] = root.value
+
             return 
 
 
 
-        self.__buildCodesHelper(self, root.left, curr_bits + "0")
-        self.__buildCodesHelper(self, root.right, curr_bits + "1")
+        self.__buildCodesHelper(root.left, curr_bits + "0")
+        self.__buildCodesHelper(root.right, curr_bits + "1")
 
 
     def __buildCodes(self):
@@ -82,12 +86,12 @@ class HuffmanCoding:
 
     def __getPaddedEncodedText(self, encoded_text):
 
-        padded_amount = 8 - (len(encoded_text))
+        padded_amount = 8 - (len(encoded_text) % 8)
 
         for i in range(padded_amount):
             encoded_text += '0'
 
-        padded_info = {"0:08b"}.format(padded_amount)
+        padded_info = "{0:08b}".format(padded_amount)
         padded_encoded_text = padded_info + encoded_text
         return padded_encoded_text
 
@@ -101,7 +105,6 @@ class HuffmanCoding:
             byte = padded_encoded_text[i : i+8]
             array.append(int(byte, 2))
 
-
         return array
 
 
@@ -111,35 +114,39 @@ class HuffmanCoding:
     def compress(self):
         #get file from path
         #read text from file
-        text = "fasbasasaawdddfjhbashff"
+        file_name, file_extension = os.path.splitext(self.path)
+        output_path = file_name + ".bin"
 
-        #make frequency dictionary using the text
-
-        freq_dict = self.__make_frequency_dict(text)
+        with open(self.path, 'r+') as file, open(output_path, 'wb') as output:
+        #make frequency dictionary using the text 
+          
+            text = file.read()
+            text = text.rstrip()
+            freq_dict = self.__make_frequency_dict(text)
         
 
 
         #construct the heap from the frequency_dict
 
-        self.__buildHeap(freq_dict)
+            self.__buildHeap(freq_dict)
 
         #construct the binary tree from the heap 
 
-        self.__buildTree()
+            self.__buildTree()
 
         # construct the codes from binary tree
 
-        self.__buildCodes()
+            self.__buildCodes()
 
 
         #create encoded text using the codes
-        encoded_text = self.__getEncodedText(text)
+            encoded_text = self.__getEncodedText(text)
 
         #padding encoded Text
 
-        padded_encoded_text = self.__getPaddedEncodedText(text)
+            padded_encoded_text = self.__getPaddedEncodedText(text)
 
-        bytes_array = self.__getBytesArray(padded_encoded_text)
+            bytes_array = self.__getBytesArray(padded_encoded_text)
 
         #put this encoded text into the binary file
 
@@ -147,9 +154,71 @@ class HuffmanCoding:
 
         #return this binary file as output
 
-        final_bytes = bytes(bytes_array)
+            final_bytes = bytes(bytes_array)
+            output.write(final_bytes)
+
+        print("Compressed")
+        return output_path
+
+
+    def __removePadding(self, text):
+        padded_info = text[:8]
+        extra_padding = int(padded_info,2)
+
+        text = text[8:]
+        text_after_padding_removed = text[:-1*extra_padding]
+        return text_after_padding_removed
+
+
+    def __decodeText(self, text):
+        decoded_text = ""
+        current_bits = ""
+
+        for bit in text: 
+            current_bits += bit
+            if current_bits in self.__reverseCodes:
+                character = self. __reverseCodes[current_bits]
+                decoded_text +=character
+                current_bits = ""
+
+        return decoded_text
+
+
+
+    def decompress(self, input_path):
+        filename, file_extension = os.path.splitext(self.path)
+        output_path = filename + "_decompressed" + ".txt"
+        with open(input_path, 'rb') as file, open(output_path, 'w') as output:
+            bit_string = " "
+            byte = file.read(1)
+            while byte:
+                byte = ord(byte)
+                bits = bin(byte)[2:].rjust(8, '0')
+                bit_string +=bits
+                byte = file.read(1)
+
+            actual_text = self.__removePadding(bit_string)
+            decompressed_text = self.__decodeText(actual_text)
+            output.write(decompressed_text)
+
+
+
+
+
+
+
+
+
+
+path = 'D:\huffmanCoding\sample.txt'
+h = HuffmanCoding(path)
+output_path = h.compress()
+h.decompress(output_path)
+
+
+
+
         
 
 
         
-        pass
